@@ -43,12 +43,13 @@ This project reproduces the Lecture 4 COMPAS pipeline and extends it into a stru
 **Part B — Generalization**
 - Compared train vs. test AUC, accuracy, and log loss for both LR and GBT
 - Computed generalization gaps and diagnosed overfitting
-- Ran permutation importance to identify feature shortcuts (including `race_factor`)
+- Ran permutation importance on both train and test sets to distinguish stable signals from overfit shortcuts (including flagging `race_factor` as a persistent proxy)
 
 **Part C — Spurious-Correlation Probe**
 - Ran counterfactual race swap: set all defendants to African-American vs. Caucasian, measured ΔP(High-Risk)
 - Ran counterfactual gender swap: Male vs. Female, same methodology
-- Measured both mean effect size and proportion of observations significantly affected
+- Ran counterfactual crime-type swap: Felony vs. Misdemeanor as a substantive comparator to contextualize the magnitude of the protected-attribute effects
+- Measured both mean effect size and proportion of observations significantly affected, for both LR and GBT
 
 **Part D — Robustness**
 - Global sensitivity sweep of `priors_count` from 0 to 30 for both models
@@ -69,10 +70,10 @@ This project reproduces the Lecture 4 COMPAS pipeline and extends it into a stru
 All three drift tests confirmed IID train/test splits. PSI = 0.010 (well below the 0.10 stability threshold), KS p-values all > 0.20, and MMD² permutation p = 0.620. This rules out covariate shift as an explanation for any generalization gap.
 
 ### Part B — Minimal Overfitting, But a Critical Shortcut
-LR shows a negative AUC gap (−0.004), meaning the model generalizes perfectly. GBT shows mild overfitting (AUC gap = +0.014). More importantly, `race_factor` ranks 3rd in permutation importance (0.029) — a governance red flag, since race carries no legitimate causal weight in recidivism prediction.
+LR shows a negative AUC gap (−0.004), meaning the model generalizes perfectly. GBT shows mild overfitting (AUC gap = +0.014). More importantly, `race_factor` ranks 3rd in permutation importance (0.029) on both train and test sets — confirming it is a stable encoded proxy, not a training artifact — a governance red flag, since race carries no legitimate causal weight in recidivism prediction.
 
 ### Part C — Strong Evidence of Proxy Discrimination
-The race counterfactual swap produces a mean ΔP = **+0.087**: setting a defendant's race to African-American (all else equal) raises the predicted high-risk probability by 8.7 percentage points on average, and 64% of the test set is affected by more than 5pp. This is direct causal evidence of racial encoding. The gender swap produces ΔP = −0.023, with females predicted slightly higher risk — a statistical artifact of how female defendants are distributed in the training data.
+The race counterfactual swap produces a mean ΔP = **+0.087**: setting a defendant's race to African-American (all else equal) raises the predicted high-risk probability by 8.7 percentage points on average, and 64% of the test set is affected by more than 5pp. This is direct causal evidence of racial encoding. The gender swap produces ΔP = −0.023, with females predicted slightly higher risk — a statistical artifact of how female defendants are distributed in the training data. The crime-type swap (Felony vs. Misdemeanor) is included as a substantive comparator: its effect is expected and causally justified, and comparing its magnitude to the race effect contextualizes how large the spurious signal is relative to a legitimate one.
 
 ### Part D — Graceful but Unequal Degradation
 Both models degrade gracefully under noise (AUC remains above 0.78 even at σ = 5.0). LR is more sensitive in terms of Vⱼ (0.065 vs. GBT 0.047), but GBT degrades faster under noise injection. ICE curves reveal racial heterogeneity: African-American defendants show steeper response slopes to `priors_count` increases than Caucasian defendants — the same criminal history increase generates a larger risk penalty for Black defendants.
